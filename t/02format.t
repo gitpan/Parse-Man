@@ -2,7 +2,7 @@
 
 use strict;
 
-use Test::More tests => 11;
+use Test::More tests => 13;
 
 my @paras;
 
@@ -17,9 +17,22 @@ sub para_P
    push @paras, "";
 }
 
-sub chunk_R { $paras[-1] .= $_[1] }
-sub chunk_B { $paras[-1] .= "<B>$_[1]</B>" }
-sub chunk_I { $paras[-1] .= "<I>$_[1]</I>" }
+sub chunk
+{
+   my $self = shift;
+   my ( $text, %opts ) = @_;
+   
+   if( $opts{font} ne "R" ) {
+      $text = "<$opts{font}>$text</$opts{font}>";
+   }
+
+   while( $opts{size} < 0 ) {
+      $text = "<SMALL>$text</SMALL>";
+      $opts{size}++;
+   }
+
+   $paras[-1] .= $text;
+}
 
 package main;
 
@@ -56,6 +69,14 @@ EOMAN
 is_deeply( \@paras,
    [ "<I>Italic text</I>" ],
    '.I' );
+
+undef @paras;
+$parser->from_string( <<'EOMAN' ),
+.SM Small text
+EOMAN
+is_deeply( \@paras,
+   [ "<SMALL>Small text</SMALL>" ],
+   '.SM' );
 
 undef @paras;
 $parser->from_string( <<'EOMAN' ),
@@ -104,6 +125,14 @@ EOMAN
 is_deeply( \@paras,
    [ "<I>Italic text</I>" ],
    '\fI' );
+
+undef @paras;
+$parser->from_string( <<'EOMAN' ),
+\f(CWConstant-width text
+EOMAN
+is_deeply( \@paras,
+   [ "<CW>Constant-width text</CW>" ],
+   '\f(CW' );
 
 undef @paras;
 $parser->from_string( <<'EOMAN' ),

@@ -19,8 +19,18 @@ sub para_P
    push @paras, join "", @body;
 }
 
-sub chunk_B { $paras[-1] .= "<B>$_[1]</B>" }
-sub chunk_R { $paras[-1] .= $_[1] }
+sub chunk
+{
+   my $self = shift;
+   my ( $text, %opts ) = @_;
+   
+   if( $opts{font} ne "R" ) {
+      $paras[-1] .= "<$opts{font}>$text</$opts{font}>";
+   }
+   else {
+      $paras[-1] .= $text;
+   }
+}
 
 package main;
 

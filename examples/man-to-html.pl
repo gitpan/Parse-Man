@@ -10,14 +10,18 @@ use Getopt::Long;
 
 my $FILE_EXTENSION = "html";
 my $LINK_EXTENSION;
+my $ALSO_LIST;
 my $OUTPUT_DIR;
 my $PAGE_TEMPLATE;
+my $INDEX_FILE;
 
 GetOptions(
    'file-extension|e=s' => \$FILE_EXTENSION,
    'link-extension=s'   => \$LINK_EXTENSION,
+   'also-list=s'        => \$ALSO_LIST,
    'output-dir|O=s'     => \$OUTPUT_DIR,
    'template|t=s'       => \$PAGE_TEMPLATE,
+   'index=s'            => \$INDEX_FILE,
 ) or exit(1);
 
 defined $LINK_EXTENSION or $LINK_EXTENSION = $FILE_EXTENSION;
@@ -30,10 +34,10 @@ sub chunklist_class { return "ManToHTMLParser::Chunklist"; }
 package ManToHTMLParser::Chunklist;
 use base qw( Parse::Man::DOM::Chunklist );
 
-my %format_to_tag = (
+my %font_to_tag = (
    B  => "b",
    I  => "i",
-   SM => "small",
+   CW => "tt", # constant-width
 );
 
 sub as_html
@@ -52,12 +56,13 @@ sub as_html
       elsif( $chunk->is_break ) {
          $ret->append_tagged( "<br/>", raw => 1 );
       }
-      elsif( $chunk->format eq "R" ) {
-         $ret->append( $chunk->text );
-      }
       else {
-         my $tag = $format_to_tag{ $chunk->format };
-         $ret->append_tagged( $chunk->text, $tag => 1 );
+         my $str = String::Tagged::HTML->new( $chunk->text );
+
+         $str->apply_tag( 0, $str->length, $font_to_tag{$chunk->font} => 1 ) if $chunk->font ne "R";
+         $str->apply_tag( 0, $str->length, small => 1 ) if $chunk->size < 0;
+
+         $ret->append( $str );
       }
    }
 
@@ -88,8 +93,8 @@ sub make_link
 {
    my ( $name, $section ) = @_;
 
-   if( exists $doms_by_namesection{"$name.$section"} ) {
-      return "$name.$section.$LINK_EXTENSION";
+   if( my $dom = $doms_by_namesection{"$name.$section"} ) {
+      return sprintf "%s.%s.%s", lc $dom->meta("name")->value, $dom->meta("section")->value, $LINK_EXTENSION;
    }
    else {
       print STDERR "Omitting link to $name($section) because no file is being generated\n";
@@ -107,6 +112,16 @@ foreach my $manfile ( @ARGV ) {
 
    push @doms, $dom;
    $doms_by_namesection{ lc $dom->meta("name")->value . "." . $dom->meta("section")->value } = $dom;
+}
+
+if( $ALSO_LIST ) {
+   foreach ( slurp $ALSO_LIST ) {
+      chomp;
+      m/^(\S+)\s*=\s*(\S+)/ or next;
+      exists $doms_by_namesection{$2} or die "Cannot 'also' from $2 - don't have it\n";
+      print STDERR "$1 is also $2\n";
+      $doms_by_namesection{$1} = $doms_by_namesection{$2};
+   }
 }
 
 foreach my $dom ( @doms ) {
@@ -128,6 +143,31 @@ foreach my $dom ( @doms ) {
    }
 
    print $outh $output;
+}
+
+if( $INDEX_FILE ) {
+   my %synopsis_by_namesection;
+   foreach my $namesection ( keys %doms_by_namesection ) {
+      my $dom = $doms_by_namesection{$namesection};
+      my @paras = $dom->paras;
+      while( @paras ) {
+         my $para = shift @paras;
+         last if $para->type eq "heading" and $para->level == 1 and $para->text =~ m/NAME/;
+      }
+      my $para = shift @paras or next;
+      $synopsis_by_namesection{$namesection} = $para->body->as_html;
+   }
+
+   open my $outh, ">", $INDEX_FILE or die "Cannot write $INDEX_FILE - $!";
+   print $outh "<table>\n";
+   foreach my $namesection ( sort keys %synopsis_by_namesection ) {
+      my ( $name, $section ) = $namesection =~ m/^(.*)\.(.*?)$/;
+      printf $outh '<tr><td><a href="%s">%s(%s)</a></td><td>%s</td></tr>'."\n",
+         make_link( $name, $section ),
+         $name, $section,
+         $synopsis_by_namesection{$namesection};
+   }
+   print $outh "</table>\n";
 }
 
 __DATA__

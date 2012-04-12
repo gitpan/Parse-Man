@@ -1,7 +1,7 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2011 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2011-2012 -- leonerd@leonerd.org.uk
 
 package Parse::Man::DOM;
 
@@ -10,7 +10,7 @@ use warnings;
 
 use base qw( Parse::Man );
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 =head1 NAME
 
@@ -90,32 +90,11 @@ sub para_IP
    $self->{current_document}->append_para( $self->_make( para_indent => $opts, $self->_make( chunklist => ) ) );
 }
 
-sub chunk_R
+sub chunk
 {
    my $self = shift;
-   my ( $text ) = @_;
-   $self->{current_document}->append_chunk( $self->_make( chunk => R => $text ) );
-}
-
-sub chunk_I
-{
-   my $self = shift;
-   my ( $text ) = @_;
-   $self->{current_document}->append_chunk( $self->_make( chunk => I => $text ) );
-}
-
-sub chunk_B
-{
-   my $self = shift;
-   my ( $text ) = @_;
-   $self->{current_document}->append_chunk( $self->_make( chunk => B => $text ) );
-}
-
-sub chunk_SM
-{
-   my $self = shift;
-   my ( $text ) = @_;
-   $self->{current_document}->append_chunk( $self->_make( chunk => SM => $text ) );
+   my ( $text, %opts ) = @_;
+   $self->{current_document}->append_chunk( $self->_make( chunk => $text => $opts{font}, $opts{size} ) );
 }
 
 sub join_para
@@ -431,26 +410,31 @@ Represents a chunk of text with a particular format applied.
 sub new
 {
    my $class = shift;
-   return bless [ $_[0] => $_[1] ], $class;
+   return bless [ @_ ], $class;
 }
 
 sub is_linebreak { 0 }
 sub is_space     { 0 }
 sub is_break     { 0 }
 
-=head2 $format = $chunk->format
-
-The formatting name in effect for this chunk. One of C<"R">, C<"B">, C<"I"> or
-C<"SM">.
-
 =head2 $text = $chunk->text
 
 The plain string value of the text for this chunk.
 
+=head2 $font = $chunk->font
+
+The font name in effect for this chunk. One of C<"R">, C<"B">, C<"I"> or
+C<"SM">.
+
+=head2 $size = $chunk->size
+
+The size of this chunk, relative to the paragraph base of 0.
+
 =cut
 
-sub format { shift->[0] }
-sub text   { shift->[1] }
+sub text { shift->[0] }
+sub font { shift->[1] }
+sub size { shift->[2] }
 
 package Parse::Man::DOM::Linebreak;
 use base qw( Parse::Man::DOM::Chunk );

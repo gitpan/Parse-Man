@@ -2,13 +2,13 @@
 use ExtUtils::MakeMaker;
 WriteMakefile
 (
-          'NAME' => 'Parse::Man',
-          'VERSION_FROM' => 'lib/Parse/Man.pm',
-          'PREREQ_PM' => {
-                           'Parser::MGC' => 0
-                         },
-          'INSTALLDIRS' => 'site',
-          'EXE_FILES' => [],
-          'PL_FILES' => {}
-        )
+  'NAME' => 'Parse::Man',
+  'VERSION_FROM' => 'lib/Parse/Man.pm',
+  'PREREQ_PM' => {
+                   'Parser::MGC' => 0
+                 },
+  'INSTALLDIRS' => 'site',
+  'EXE_FILES' => [],
+  'PL_FILES' => {}
+)
 ;

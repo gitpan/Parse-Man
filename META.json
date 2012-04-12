@@ -4,7 +4,7 @@
       "Paul Evans <leonerd@leonerd.org.uk>"
    ],
    "dynamic_config" : 1,
-   "generated_by" : "Module::Build version 0.38, CPAN::Meta::Converter version 2.112150",
+   "generated_by" : "Module::Build version 0.38, CPAN::Meta::Converter version 2.120630",
    "license" : [
       "perl_5"
    ],
@@ -16,18 +16,18 @@
    "prereqs" : {
       "runtime" : {
          "requires" : {
-            "Parser::MGC" : 0
+            "Parser::MGC" : "0"
          }
       }
    },
    "provides" : {
       "Parse::Man" : {
          "file" : "lib/Parse/Man.pm",
-         "version" : "0.01"
+         "version" : "0.02"
       },
       "Parse::Man::DOM" : {
          "file" : "lib/Parse/Man/DOM.pm",
-         "version" : "0.01"
+         "version" : "0.02"
       },
       "Parse::Man::DOM::Break" : {
          "file" : "lib/Parse/Man/DOM.pm",
@@ -84,5 +84,5 @@
          "http://dev.perl.org/licenses/"
       ]
    },
-   "version" : "0.01"
+   "version" : "0.02"
 }

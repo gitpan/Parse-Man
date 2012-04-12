@@ -19,7 +19,13 @@ sub para_TP
    push @paras, "";
 }
 
-sub chunk_R { $paras[-1] .= $_[1] }
+sub chunk
+{
+   my $self = shift;
+   my ( $text ) = @_;
+
+   $paras[-1] .= $text;
+}
 
 package main;
 

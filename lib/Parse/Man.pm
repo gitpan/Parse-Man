@@ -1,7 +1,7 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2011 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2011-2012 -- leonerd@leonerd.org.uk
 
 package Parse::Man;
 
@@ -10,7 +10,7 @@ use warnings;
 
 use base qw( Parser::MGC );
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 use constant pattern_ws => qr/[ \t]+/;
 
@@ -95,16 +95,28 @@ sub parse_line
    );
 }
 
-=head1 TEXT CHUNK FORMATTING METHODS
+=head1 TEXT CHUNK FORMATTING METHOD
 
-The following methods are used to parse formatted text. Each is passed a plain
-string value from the input content.
+The following method is used to handle formatted text. Each call is passed a
+plain string value from the input content.
 
 =cut
 
-=head2 $parser->chunk_B( $text )
+=head2 $parser->chunk( $text, %opts )
 
-Handles text content from C<.B> directives and C<\fB> inline formatting.
+The C<%opts> hash contains the following options:
+
+=over 4
+
+=item font => STRING
+
+The name of the current font (C<R>, C<B>, etc..)
+
+=item size => INT
+
+The current text size, relative to a paragraph base of 0.
+
+=back
 
 =cut
 
@@ -112,49 +124,28 @@ sub parse_directive_B
 {
    my $self = shift;
    $self->_flush_para;
-   $self->chunk_B( $self->parse_chunks_flat );
+   $self->chunk( $self->parse_chunks_flat, font => "B", size => 0 );
 }
-
-=head2 $parser->chunk_I( $text )
-
-Handles text content from C<.I> directives and C<\fI> inline formatting.
-
-=cut
 
 sub parse_directive_I
 {
    my $self = shift;
    $self->_flush_para;
-   $self->chunk_I( $self->parse_chunks_flat );
+   $self->chunk( $self->parse_chunks_flat, font => "I", size => 0 );
 }
-
-=head2 $parser->chunk_R( $text )
-
-Handles text content from C<.R> directives and C<\fR> inline formatting.
-
-These above three methods are also used to handle C<.BI>, C<.IB>, C<.RB>,
-C<.BR>, C<.RI> and C<.IR> directives.
-
-=cut
 
 sub parse_directive_R
 {
    my $self = shift;
    $self->_flush_para;
-   $self->chunk_R( $self->parse_chunks_flat );
+   $self->chunk( $self->parse_chunks_flat, font => "R", size => 0 );
 }
-
-=head2 $parser->chunk_SM( $text )
-
-Handles text content from C<.SM> directives.
-
-=cut
 
 sub parse_directive_SM
 {
    my $self = shift;
    $self->_flush_para;
-   $self->chunk_SM( $self->parse_chunks_flat );
+   $self->chunk( $self->parse_chunks_flat, font => "R", size => -1 );
 }
 
 sub _parse_directive_alternate
@@ -163,44 +154,51 @@ sub _parse_directive_alternate
    my ( $first, $second ) = @_;
    $self->_flush_para;
    my $i = 0;
-   map $self->${\(++$i % 2 ? $first : $second )}( $_ ), $self->parse_chunks;
+   map { $self->chunk( $_, font => ( ++$i % 2 ? $first : $second ), size => 0 ) } $self->parse_chunks;
 }
 
 sub parse_directive_BI
 {
    my $self = shift;
-   $self->_parse_directive_alternate( "chunk_B", "chunk_I" );
+   $self->_parse_directive_alternate( "B", "I" );
 }
 
 sub parse_directive_IB
 {
    my $self = shift;
-   $self->_parse_directive_alternate( "chunk_I", "chunk_B" );
+   $self->_parse_directive_alternate( "I", "B" );
 }
 
 sub parse_directive_RB
 {
    my $self = shift;
-   $self->_parse_directive_alternate( "chunk_R", "chunk_B" );
+   $self->_parse_directive_alternate( "R", "B" );
 }
 
 sub parse_directive_BR
 {
    my $self = shift;
-   $self->_parse_directive_alternate( "chunk_B", "chunk_R" );
+   $self->_parse_directive_alternate( "B", "R" );
 }
 
 sub parse_directive_RI
 {
    my $self = shift;
-   $self->_parse_directive_alternate( "chunk_R", "chunk_I" );
+   $self->_parse_directive_alternate( "R", "I" );
 }
 
 sub parse_directive_IR
 {
    my $self = shift;
-   $self->_parse_directive_alternate( "chunk_I", "chunk_R" );
+   $self->_parse_directive_alternate( "I", "R" );
 }
+
+=pod
+
+Other font requests that are found in C<\fX> or C<\f(AB> requests are handled
+by similarly-named methods.
+
+=cut
 
 =head1 PARAGRAPH HANDLING METHODS
 
@@ -345,16 +343,17 @@ sub parse_plaintext
 {
    my $self = shift;
 
-   my @format = "R";
+   my @font = "R";
 
    $self->_flush_para;
 
    $self->sequence_of(
       sub { $self->any_of(
-         sub { $self->expect( qr/\\fP/ ); pop @format },
-         sub { push @format, ( $self->expect( qr/\\f([BIR])/ ) )[1]; },
-         sub { my $else = ( $self->expect( qr/\\(.)/ ) )[1]; $self->${\"chunk_$format[-1]"}( $else ) },
-         sub { $self->${\"chunk_$format[-1]"}( $self->substring_before( qr/[\\\n]/ ) ) },
+         sub { $self->expect( qr/\\fP/ ); pop @font },
+         sub { push @font, ( $self->expect( qr/\\f([A-Z])/ ) )[1]; }, # \fX
+         sub { push @font, ( $self->expect( qr/\\f\((..)/ ) )[1]; },  # \f(AB
+         sub { my $else = ( $self->expect( qr/\\(.)/ ) )[1]; $self->chunk( $else, font => $font[-1], size => 0 ) },
+         sub { $self->chunk( $self->substring_before( qr/[\\\n]/ ), font => $font[-1], size => 0 ) },
       ); }
    );
 }
